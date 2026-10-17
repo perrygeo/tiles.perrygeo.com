@@ -1,12 +1,31 @@
 listen_addresses: "127.0.0.1:3000"
 web_ui: enable-for-all
 cache:
-  size_mb: 768
+  # t3.small has 2 GiB total. The box idles around ~0.5 GiB used, so give
+  # Martin the spare memory as cache while keeping ~0.5 GiB headroom for the
+  # OS, nginx, and nixos-rebuild.
+  #
+  # Martin's default `size_mb` split is 50% tiles / 25% pmtiles-dir / 12.5%
+  # fonts / 12.5% sprites. Fonts and sprites are served by nginx from assets/,
+  # not by Martin, so their caches are disabled and that memory goes to the
+  # tile cache instead.
+  size_mb: 1280
+  # Main tile cache: holds frequently-requested tiles so CloudFront misses
+  # don't round-trip to S3 / EOX / Esri.
+  tile_size_mb: 1024
 pmtiles:
   skip_signature: true
   region: us-east-1
+  directory_cache:
+    # A single PMTiles directory is small; this keeps it resident so S3-backed
+    # sources don't re-resolve the directory per request.
+    size_mb: 256
   sources:
     latest: s3://pmtiles.perrygeo.com/latest.pmtiles
+fonts:
+  cache: disable
+sprites:
+  cache: disable
 passthrough:
   sources:
     hillshade:
