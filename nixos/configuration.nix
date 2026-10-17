@@ -5,30 +5,22 @@
   ...
 }:
 
-let
-  martinConfig = pkgs.writeText "martin-config.yaml" ''
-    listen_addresses: "127.0.0.1:3000"
-    cache:
-      size_mb: 768
-    pmtiles:
-      skip_signature: true
-      region: us-east-1
-      sources:
-        latest: s3://pmtiles.perrygeo.com/latest.pmtiles
-    passthrough:
-      sources:
-        hillshade:
-          url: https://services.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}
-          format: jpg
-          minzoom: 0
-          maxzoom: 23
-          attribution: 'Esri'
-  '';
-in
 {
   imports = [
     (modulesPath + "/virtualisation/amazon-image.nix")
     (modulesPath + "/profiles/qemu-guest.nix")
+  ];
+
+  environment.systemPackages = with pkgs; [
+    htop
+    jq
+    git
+    gnumake
+    just
+    babashka
+    # So `htop`/ncurses apps work over SSH from a kitty terminal
+    # (local TERM=xterm-kitty is forwarded to the box).
+    kitty.terminfo
   ];
 
   nix.settings.experimental-features = [
@@ -55,7 +47,7 @@ in
     after = [ "network-online.target" ];
     wants = [ "network-online.target" ];
     serviceConfig = {
-      ExecStart = "${lib.getExe pkgs.martin} --config ${martinConfig}";
+      ExecStart = "${lib.getExe pkgs.martin} --config ${./martin-config.yaml}";
       Restart = "always";
       RestartSec = "3s";
       DynamicUser = true;
@@ -85,6 +77,19 @@ in
     };
 
     virtualHosts."tiles.perrygeo.com" = {
+      # s2cloudless tiles are immutable satellite imagery: cache them for 7 days
+      # instead of the 24h default applied by the catch-all location below.
+      locations."/s2cloudless/" = {
+        proxyPass = "http://127.0.0.1:3000";
+        extraConfig = ''
+          proxy_hide_header Cache-Control;
+          add_header Cache-Control "public, max-age=604800";
+
+          proxy_hide_header Access-Control-Allow-Origin;
+          add_header Access-Control-Allow-Origin "*" always;
+        '';
+      };
+
       locations."/" = {
         proxyPass = "http://127.0.0.1:3000";
         extraConfig = ''

@@ -3,9 +3,9 @@
 #
 # The instance boots the official NixOS AMI and is then configured in place with
 # the flake at the repo root. Changing flake.nix / flake.lock /
-# nixos/configuration.nix / the martin patch makes Terraform replace this small
-# terraform_data resource, which re-runs the provisioner against the same EC2
-# instance — the instance itself is NOT replaced.
+# nixos/configuration.nix / nixos/martin-config.yaml / the martin patch makes
+# Terraform replace this small terraform_data resource, which re-runs the
+# provisioner against the same EC2 instance — the instance itself is NOT replaced.
 #
 # To force a rebuild without editing files:
 #
@@ -20,11 +20,12 @@ resource "terraform_data" "nixos_rebuild" {
   ]
 
   triggers_replace = {
-    instance_id = aws_spot_instance_request.tiles.spot_instance_id
-    flake       = filesha256("${path.module}/../flake.nix")
-    lock        = filesha256("${path.module}/../flake.lock")
-    config      = filesha256("${path.module}/../nixos/configuration.nix")
-    patch       = filesha256("${path.module}/../nixos/libdeflate-gcc16.patch")
+    instance_id   = aws_spot_instance_request.tiles.spot_instance_id
+    flake         = filesha256("${path.module}/../flake.nix")
+    lock          = filesha256("${path.module}/../flake.lock")
+    config        = filesha256("${path.module}/../nixos/configuration.nix")
+    martin_config = filesha256("${path.module}/../nixos/martin-config.yaml")
+    patch         = filesha256("${path.module}/../nixos/libdeflate-gcc16.patch")
   }
 
   provisioner "local-exec" {

@@ -7,6 +7,7 @@ Internet → CloudFront (TLS/ACM) → nginx:80 (EC2 spot + Elastic IP) → marti
                                                                         │
                                                          pmtiles.perrygeo.com S3 (public)
                                                          + Esri hillshade passthrough
+                                                         + EOX Sentinel-2 cloudless passthrough
 ```
 
 This repo was extracted from the `dotfiles` repo (phase 2 of
@@ -18,6 +19,7 @@ apply` adopts them in place rather than creating duplicates.
 ```
 flake.nix                  NixOS config for the EC2 instance (.#tiles)
 nixos/configuration.nix    martin + nginx systemd/services
+nixos/martin-config.yaml   martin tile sources/cache config
 nixos/libdeflate-gcc16.patch  martin build fix for gcc 16
 terraform/                 all AWS infrastructure
 ```
@@ -25,8 +27,8 @@ terraform/                 all AWS infrastructure
 Terraform and Nix are wired together the way the
 [climate-changed](https://github.com/perrygeo/climate-changed) infra is:
 `terraform_data.nixos_rebuild` runs `nixos-rebuild switch --flake .#tiles`
-against the instance whenever the flake/lock/config/patch change. There is no
-separate `sync`/`deploy` step.
+against the instance whenever the flake/lock/config/martin-config/patch change.
+There is no separate `sync`/`deploy` step.
 
 ## Prerequisites
 
@@ -104,6 +106,11 @@ instance in place. The EC2 instance is not replaced.
 - **S3 source:** the PMTiles archive lives in the public
   `s3://pmtiles.perrygeo.com/latest.pmtiles` bucket, which is **not** managed by
   this repo. Uploading a new archive is an out-of-band step.
+- **Sentinel-2 cloudless passthrough:** the `s2cloudless` source proxies the EOX
+  WMTS (`…/g/{z}/{y}/{x}.jpg` — row/column order, not XYZ) up to zoom 18. The
+  in-memory tile cache is Martin's own (`cache.size_mb`), replacing the
+  application-level cache climate-changed used for the same endpoint. nginx
+  serves `/s2cloudless/` tiles with a 7-day `Cache-Control`.
 - **CloudFront caching:** TTLs are origin-driven. nginx sets
-  `Cache-Control: public, max-age=86400` on tiles, and the cache key is
-  `Host + query string` (no cookies / `X-Forwarded-For`).
+  `Cache-Control: public, max-age=86400` on tiles (7 days for `/s2cloudless/`),
+  and the cache key is `Host + query string` (no cookies / `X-Forwarded-For`).
