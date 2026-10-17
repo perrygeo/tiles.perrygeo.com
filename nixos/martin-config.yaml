@@ -1,4 +1,5 @@
 listen_addresses: "127.0.0.1:3000"
+web_ui: enable-for-all
 cache:
   size_mb: 768
 pmtiles:

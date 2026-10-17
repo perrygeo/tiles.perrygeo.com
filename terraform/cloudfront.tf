@@ -38,16 +38,22 @@ resource "aws_cloudfront_cache_policy" "tiles" {
 resource "aws_cloudfront_origin_request_policy" "tiles" {
   # Legacy policy name (see cache policy note above).
   name    = "gateway-forward-to-origin"
-  comment = "Forward cookies, query string, and X-Forwarded-For to origin without caching on them"
+  comment = "Forward all viewer headers plus CloudFront-Forwarded-Proto (and cookies/query string) to origin without caching on them"
 
   cookies_config {
     cookie_behavior = "all"
   }
 
   headers_config {
-    header_behavior = "whitelist"
+    # Forward every viewer header (Host, Accept, Origin, ...) plus the one
+    # CloudFront header we need. CloudFront does not forward its CloudFront-*
+    # headers unless explicitly whitelisted, and it rejects X-Forwarded-Proto
+    # in an origin request policy. nginx maps CloudFront-Forwarded-Proto to
+    # X-Forwarded-Proto for Martin, which builds absolute WebUI/TileJSON URLs
+    # from the scheme it receives.
+    header_behavior = "allViewerAndWhitelistCloudFront"
     headers {
-      items = ["X-Forwarded-For"]
+      items = ["CloudFront-Forwarded-Proto"]
     }
   }
 

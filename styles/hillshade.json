@@ -1,0 +1,23 @@
+{
+  "version": 8,
+  "name": "Hillshade",
+  "sources": {
+    "hillshade": {
+      "type": "raster",
+      "tiles": [
+        "https://tiles.perrygeo.com/hillshade/{z}/{x}/{y}"
+      ],
+      "tileSize": 256,
+      "attribution": "Esri",
+      "minzoom": 0,
+      "maxzoom": 23
+    }
+  },
+  "layers": [
+    {
+      "id": "hillshade",
+      "type": "raster",
+      "source": "hillshade"
+    }
+  ]
+}

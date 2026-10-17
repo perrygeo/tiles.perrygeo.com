@@ -7,7 +7,7 @@ TEST_URLS := \
   https://tiles.perrygeo.com/hillshade/0/0/0 \
   https://tiles.perrygeo.com/s2cloudless/0/0/0
 
-.PHONY: help init plan apply destroy rebuild ssh test
+.PHONY: help init plan apply destroy rebuild ssh test purge
 
 help:
 	@echo "Usage: make <target>"
@@ -19,6 +19,7 @@ help:
 	@echo "  rebuild    force nixos-rebuild without editing files"
 	@echo "  ssh        SSH into the instance as root"
 	@echo "  test       curl one tile from each tileset (checks HTTP 200)"
+	@echo "  purge      invalidate the entire CloudFront cache"
 
 init:
 	cd $(TF_DIR) && terraform init
@@ -38,6 +39,16 @@ rebuild:
 
 ssh:
 	cd $(TF_DIR) && $$(terraform output -raw ssh_command)
+
+# Invalidate every cached object in the CloudFront distribution.
+purge:
+	@id=$$(cd $(TF_DIR) && terraform output -raw cloudfront_distribution_id); \
+	echo "Creating CloudFront invalidation for distribution $$id"; \
+	$(AWS_ENV) && aws cloudfront create-invalidation \
+	  --distribution-id "$$id" \
+	  --paths "/*" \
+	  --query 'Invalidation.{Id:Id,Status:Status}' \
+	  --output table
 
 # Curl one z0 tile from each tileset and fail on any non-200 response.
 test:

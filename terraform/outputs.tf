@@ -13,6 +13,11 @@ output "cloudfront_domain_name" {
   value       = aws_cloudfront_distribution.tiles.domain_name
 }
 
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID (used by `make purge` for invalidations)."
+  value       = aws_cloudfront_distribution.tiles.id
+}
+
 output "ssh_command" {
   description = "Convenience SSH command (uses ssh_private_key_path)."
   value       = "ssh -i ${var.ssh_private_key_path} root@${aws_eip.tiles.public_ip}"

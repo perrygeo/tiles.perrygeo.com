@@ -26,6 +26,9 @@ resource "terraform_data" "nixos_rebuild" {
     config        = filesha256("${path.module}/../nixos/configuration.nix")
     martin_config = filesha256("${path.module}/../nixos/martin-config.yaml")
     patch         = filesha256("${path.module}/../nixos/libdeflate-gcc16.patch")
+    # Hash every style file so edits to styles/ re-run nixos-rebuild (the flake
+    # embeds ${../styles} as a Nix path, but terraform only hashes what we list).
+    styles = sha256(join("", [for f in sort(fileset("${path.module}/../styles", "**")) : filesha256("${path.module}/../styles/${f}")]))
   }
 
   provisioner "local-exec" {

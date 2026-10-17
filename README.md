@@ -21,14 +21,15 @@ flake.nix                  NixOS config for the EC2 instance (.#tiles)
 nixos/configuration.nix    martin + nginx systemd/services
 nixos/martin-config.yaml   martin tile sources/cache config
 nixos/libdeflate-gcc16.patch  martin build fix for gcc 16
+styles/                    MapLibre style JSON, served by martin as /style/{name}
 terraform/                 all AWS infrastructure
 ```
 
 Terraform and Nix are wired together the way the
 [climate-changed](https://github.com/perrygeo/climate-changed) infra is:
 `terraform_data.nixos_rebuild` runs `nixos-rebuild switch --flake .#tiles`
-against the instance whenever the flake/lock/config/martin-config/patch change.
-There is no separate `sync`/`deploy` step.
+against the instance whenever the flake/lock/config/martin-config/patch or any
+file under `styles/` changes. There is no separate `sync`/`deploy` step.
 
 ## Prerequisites
 
@@ -90,6 +91,7 @@ make plan      # preview changes
 make apply     # apply infra changes; re-runs nixos-rebuild if the flake changed
 make rebuild   # force nixos-rebuild without editing files
 make ssh       # SSH in: make ssh SSH_KEY=~/.ssh/labs-keypair.pem EIP=<elastic_ip>
+make purge     # invalidate the entire CloudFront cache
 ```
 
 To change the tile server software (martin/nginx), edit `nixos/configuration.nix`
@@ -109,8 +111,16 @@ instance in place. The EC2 instance is not replaced.
 - **Sentinel-2 cloudless passthrough:** the `s2cloudless` source proxies the EOX
   WMTS (`…/g/{z}/{y}/{x}.jpg` — row/column order, not XYZ) up to zoom 18. The
   in-memory tile cache is Martin's own (`cache.size_mb`), replacing the
-  application-level cache climate-changed used for the same endpoint. nginx
-  serves `/s2cloudless/` tiles with a 7-day `Cache-Control`.
+  application-level cache climate-changed used for the same endpoint.
 - **CloudFront caching:** TTLs are origin-driven. nginx sets
-  `Cache-Control: public, max-age=86400` on tiles (7 days for `/s2cloudless/`),
-  and the cache key is `Host + query string` (no cookies / `X-Forwarded-For`).
+  `Cache-Control: public, max-age=604800` on tile paths
+  (`/{source}/{z}/{x}/{y}`) and `Cache-Control: no-store` on everything else
+  (WebUI HTML/JS, TileJSON, `/catalog`, `/style/*`, `/health`), so metadata
+  changes appear without a purge. The cache key is `Host + query string` (no
+  cookies / `X-Forwarded-For`). After updating an origin archive, force a
+  refresh with `make purge`, which issues a CloudFront invalidation for `/*`.
+- **Styles:** martin is started with `--style styles/`, so every `.json` file in
+  that directory is served at `/style/{filename-stem}` (e.g.
+  `styles/hillshade.json` → `/style/hillshade`). The protomaps styles point at
+  `https://tiles.perrygeo.com/latest/{z}/{x}/{y}`; `hillshade.json` and
+  `s2cloudless.json` are minimal raster styles over the two passthrough sources.

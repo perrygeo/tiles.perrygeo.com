@@ -1,0 +1,23 @@
+{
+  "version": 8,
+  "name": "Sentinel-2 cloudless",
+  "sources": {
+    "s2cloudless": {
+      "type": "raster",
+      "tiles": [
+        "https://tiles.perrygeo.com/s2cloudless/{z}/{x}/{y}"
+      ],
+      "tileSize": 256,
+      "attribution": "Sentinel-2 cloudless 2020 © EOX (CC BY-NC-SA 4.0)",
+      "minzoom": 0,
+      "maxzoom": 18
+    }
+  },
+  "layers": [
+    {
+      "id": "s2cloudless",
+      "type": "raster",
+      "source": "s2cloudless"
+    }
+  ]
+}
