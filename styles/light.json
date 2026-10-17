@@ -4829,6 +4829,6 @@
       }
     }
   ],
-  "sprite": "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
-  "glyphs": "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf"
+  "sprite": "https://tiles.perrygeo.com/assets/sprites/v4/light",
+  "glyphs": "https://tiles.perrygeo.com/assets/fonts/{fontstack}/{range}.pbf"
 }

@@ -22,6 +22,7 @@ nixos/configuration.nix    martin + nginx systemd/services
 nixos/martin-config.yaml   martin tile sources/cache config
 nixos/libdeflate-gcc16.patch  martin build fix for gcc 16
 styles/                    MapLibre style JSON, served by martin as /style/{name}
+assets/                    vendored MapLibre fonts + sprites, served by nginx as /assets/
 terraform/                 all AWS infrastructure
 ```
 
@@ -29,7 +30,8 @@ Terraform and Nix are wired together the way the
 [climate-changed](https://github.com/perrygeo/climate-changed) infra is:
 `terraform_data.nixos_rebuild` runs `nixos-rebuild switch --flake .#tiles`
 against the instance whenever the flake/lock/config/martin-config/patch or any
-file under `styles/` changes. There is no separate `sync`/`deploy` step.
+file under `styles/` or `assets/` changes. There is no separate `sync`/`deploy`
+step.
 
 ## Prerequisites
 
@@ -114,13 +116,26 @@ instance in place. The EC2 instance is not replaced.
   application-level cache climate-changed used for the same endpoint.
 - **CloudFront caching:** TTLs are origin-driven. nginx sets
   `Cache-Control: public, max-age=604800` on tile paths
-  (`/{source}/{z}/{x}/{y}`) and `Cache-Control: no-store` on everything else
-  (WebUI HTML/JS, TileJSON, `/catalog`, `/style/*`, `/health`), so metadata
-  changes appear without a purge. The cache key is `Host + query string` (no
-  cookies / `X-Forwarded-For`). After updating an origin archive, force a
-  refresh with `make purge`, which issues a CloudFront invalidation for `/*`.
+  (`/{source}/{z}/{x}/{y}`) and on `/assets/*` (vendored fonts/sprites), and
+  `Cache-Control: no-store` on everything else (WebUI HTML/JS, TileJSON,
+  `/catalog`, `/style/*`, `/health`), so metadata changes appear without a
+  purge. The cache key is `Host + query string` (no cookies /
+  `X-Forwarded-For`). After updating an origin archive, force a refresh with
+  `make purge`, which issues a CloudFront invalidation for `/*`.
 - **Styles:** martin is started with `--style styles/`, so every `.json` file in
   that directory is served at `/style/{filename-stem}` (e.g.
   `styles/hillshade.json` → `/style/hillshade`). The protomaps styles point at
   `https://tiles.perrygeo.com/latest/{z}/{x}/{y}`; `hillshade.json` and
   `s2cloudless.json` are minimal raster styles over the two passthrough sources.
+- **Fonts & sprites:** the styles used to load glyphs and sprites from
+  `protomaps.github.io/basemaps-assets`. Those assets are now vendored under
+  `assets/` (glyph PBFs in `assets/fonts/`, sprite sheets in `assets/sprites/v4/`)
+  and served by nginx at `/assets/...`, so the styles no longer depend on a
+  third-party origin. They are committed as-is from the
+  [protomaps/basemaps-assets](https://github.com/protomaps/basemaps-assets) repo;
+  to refresh them, re-download that repo and copy `fonts/` and `sprites/v4/`
+  into `assets/`. Martin is *not* used for this — its `--font`/`--sprite`
+  sources generate glyphs/sprites from TTF/SVG inputs rather than serving the
+  pre-built PBF/PNG/JSON artifacts, and can't reproduce protomaps' merged
+  fontstacks (e.g. `Noto Sans Regular` = base + ~30 script fallbacks, and the
+  `Noto Sans Devanagari Regular v1` variant).

@@ -130,6 +130,22 @@
         '';
       };
 
+      # Vendored MapLibre fonts (glyph PBFs) and sprites, served straight off
+      # disk (see assets/). The protomaps styles reference these at
+      # /assets/fonts/... and /assets/sprites/...; they are versioned
+      # (sprites/v4, fontstack names) and effectively immutable, so cache them
+      # like tiles. The 7-day TTL + `make purge` model matches the tile paths.
+      locations."/assets/" = {
+        alias = "${../assets}/";
+        extraConfig = ''
+          add_header Cache-Control "public, max-age=604800";
+
+          # Same reasoning as the tile location: a static origin is safe for
+          # these anonymous assets.
+          add_header Access-Control-Allow-Origin "*" always;
+        '';
+      };
+
       # WebUI HTML/JS, TileJSON, /catalog, /health, and tile-redirect aliases:
       # never cache, so metadata/config changes show up without a CloudFront
       # purge.

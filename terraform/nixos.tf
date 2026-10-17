@@ -29,6 +29,10 @@ resource "terraform_data" "nixos_rebuild" {
     # Hash every style file so edits to styles/ re-run nixos-rebuild (the flake
     # embeds ${../styles} as a Nix path, but terraform only hashes what we list).
     styles = sha256(join("", [for f in sort(fileset("${path.module}/../styles", "**")) : filesha256("${path.module}/../styles/${f}")]))
+    # Same for the vendored fonts/sprites: nixos/configuration.nix embeds
+    # ${../assets} for nginx to serve, but terraform must hash the files itself
+    # to know when to re-run nixos-rebuild.
+    assets = sha256(join("", [for f in sort(fileset("${path.module}/../assets", "**")) : filesha256("${path.module}/../assets/${f}")]))
   }
 
   provisioner "local-exec" {

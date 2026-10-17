@@ -7,7 +7,7 @@ TEST_URLS := \
   https://tiles.perrygeo.com/hillshade/0/0/0 \
   https://tiles.perrygeo.com/s2cloudless/0/0/0
 
-.PHONY: help init plan apply destroy rebuild ssh test purge
+.PHONY: help init plan apply destroy rebuild ssh test purge vendor-assets
 
 help:
 	@echo "Usage: make <target>"
@@ -20,6 +20,7 @@ help:
 	@echo "  ssh        SSH into the instance as root"
 	@echo "  test       curl one tile from each tileset (checks HTTP 200)"
 	@echo "  purge      invalidate the entire CloudFront cache"
+	@echo "  vendor-assets  re-download protomaps fonts/sprites into assets/"
 
 init:
 	cd $(TF_DIR) && terraform init
@@ -49,6 +50,19 @@ purge:
 	  --paths "/*" \
 	  --query 'Invalidation.{Id:Id,Status:Status}' \
 	  --output table
+
+# Re-download the protomaps fonts/sprites into assets/ (see README "Fonts & sprites").
+# Replaces assets/fonts/ and assets/sprites/v4/ only, so assets/sprites/LICENSE.md
+# and any local overrides outside those trees are preserved.
+vendor-assets:
+	rm -rf /tmp/basemaps-assets && mkdir -p /tmp/basemaps-assets
+	curl -sSL -o /tmp/basemaps-assets/main.tar.gz https://codeload.github.com/protomaps/basemaps-assets/tar.gz/refs/heads/main
+	tar -xzf /tmp/basemaps-assets/main.tar.gz -C /tmp/basemaps-assets
+	rm -rf assets/fonts assets/sprites/v4
+	mkdir -p assets/sprites
+	cp -a /tmp/basemaps-assets/basemaps-assets-main/fonts assets/fonts
+	cp -a /tmp/basemaps-assets/basemaps-assets-main/sprites/v4 assets/sprites/v4
+	rm -rf /tmp/basemaps-assets
 
 # Curl one z0 tile from each tileset and fail on any non-200 response.
 test:
