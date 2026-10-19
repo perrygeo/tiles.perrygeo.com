@@ -3,9 +3,10 @@
 #
 # The instance boots the official NixOS AMI and is then configured in place with
 # the flake at the repo root. Changing flake.nix / flake.lock /
-# nixos/configuration.nix / nixos/martin-config.yaml / the martin patch makes
-# Terraform replace this small terraform_data resource, which re-runs the
-# provisioner against the same EC2 instance — the instance itself is NOT replaced.
+# nixos/configuration.nix / nixos/martin-config.yaml / nixos/martin-2.nix /
+# the martin patches makes Terraform replace this small terraform_data resource,
+# which re-runs the provisioner against the same EC2 instance — the instance
+# itself is NOT replaced.
 #
 # To force a rebuild without editing files:
 #
@@ -26,6 +27,8 @@ resource "terraform_data" "nixos_rebuild" {
     config        = filesha256("${path.module}/../nixos/configuration.nix")
     martin_config = filesha256("${path.module}/../nixos/martin-config.yaml")
     patch         = filesha256("${path.module}/../nixos/libdeflate-gcc16.patch")
+    martin_pkg    = filesha256("${path.module}/../nixos/martin-2.nix")
+    webui_patch   = filesha256("${path.module}/../nixos/dont-build-webui.patch")
     # Hash every style file so edits to styles/ re-run nixos-rebuild (the flake
     # embeds ${../styles} as a Nix path, but terraform only hashes what we list).
     styles = sha256(join("", [for f in sort(fileset("${path.module}/../styles", "**")) : filesha256("${path.module}/../styles/${f}")]))

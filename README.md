@@ -20,6 +20,8 @@ apply` adopts them in place rather than creating duplicates.
 flake.nix                  NixOS config for the EC2 instance (.#tiles)
 nixos/configuration.nix    martin + nginx systemd/services
 nixos/martin-config.yaml   martin tile sources/cache config
+nixos/martin-2.nix         local martin 2.0 package (until nixpkgs ships it)
+nixos/dont-build-webui.patch  skip build.rs's npm build (nix pre-builds the UI)
 nixos/libdeflate-gcc16.patch  martin build fix for gcc 16
 styles/                    MapLibre style JSON, served by martin as /style/{name}
 assets/                    vendored MapLibre fonts + sprites, served by nginx as /assets/
