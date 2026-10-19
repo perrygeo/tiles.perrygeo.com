@@ -1,0 +1,47 @@
+# Local metrics stack: scrapes https://tiles.perrygeo.com/_/metrics with
+# Prometheus and visualises it with Grafana.
+#
+#   make watch-metrics   # from the repo root
+#
+# Grafana is provisioned with the Prometheus datasource and a Martin dashboard,
+# so the dashboard is ready to view at:
+#   http://localhost:3000/d/martin-overview/martin-tile-server
+services:
+  prometheus:
+    image: prom/prometheus:v3.4.0
+    container_name: tiles-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: tiles-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Local-only convenience: the provisioned dashboard loads without a login
+      # as a read-only viewer. Sign in as admin/admin to edit dashboards.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  prometheus-data:
+  grafana-data:

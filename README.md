@@ -23,6 +23,7 @@ nixos/martin-config.yaml   martin tile sources/cache config
 nixos/libdeflate-gcc16.patch  martin build fix for gcc 16
 styles/                    MapLibre style JSON, served by martin as /style/{name}
 assets/                    vendored MapLibre fonts + sprites, served by nginx as /assets/
+metrics/                   local Prometheus + Grafana stack (see metrics/README.md)
 terraform/                 all AWS infrastructure
 ```
 
@@ -94,6 +95,7 @@ make apply     # apply infra changes; re-runs nixos-rebuild if the flake changed
 make rebuild   # force nixos-rebuild without editing files
 make ssh       # SSH in: make ssh SSH_KEY=~/.ssh/labs-keypair.pem EIP=<elastic_ip>
 make purge     # invalidate the entire CloudFront cache
+make watch-metrics  # local Prometheus + Grafana dashboard for /_/metrics
 ```
 
 To change the tile server software (martin/nginx), edit `nixos/configuration.nix`

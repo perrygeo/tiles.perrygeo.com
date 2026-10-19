@@ -1,4 +1,6 @@
 TF_DIR := terraform
+METRICS_DIR := metrics
+GRAFANA_DASHBOARD_URL := http://localhost:3000/d/martin-overview/martin-tile-server
 AWS_ENV := eval "$$(aws configure export-credentials --format env)"
 
 # One z0 tile from each tileset served by martin.
@@ -7,7 +9,7 @@ TEST_URLS := \
   https://tiles.perrygeo.com/hillshade/0/0/0 \
   https://tiles.perrygeo.com/s2cloudless/0/0/0
 
-.PHONY: help init plan apply destroy rebuild ssh test purge vendor-assets
+.PHONY: help init plan apply destroy rebuild ssh test purge vendor-assets watch-metrics metrics-down metrics-clean
 
 help:
 	@echo "Usage: make <target>"
@@ -21,6 +23,9 @@ help:
 	@echo "  test       curl one tile from each tileset (checks HTTP 200)"
 	@echo "  purge      invalidate the entire CloudFront cache"
 	@echo "  vendor-assets  re-download protomaps fonts/sprites into assets/"
+	@echo "  watch-metrics  start Prometheus + Grafana locally and open the dashboard"
+	@echo "  metrics-down   stop the metrics stack"
+	@echo "  metrics-clean  stop the metrics stack and delete its data volumes"
 
 init:
 	cd $(TF_DIR) && terraform init
@@ -65,6 +70,28 @@ vendor-assets:
 	rm -rf /tmp/basemaps-assets
 
 # Curl one z0 tile from each tileset and fail on any non-200 response.
+# Bring up the local Prometheus + Grafana stack (see metrics/README.md),
+# open the Martin dashboard in a browser, then tail the container logs.
+# Ctrl-C stops the log stream; the containers keep running in the background
+# until `make metrics-down`.
+watch-metrics:
+	cd $(METRICS_DIR) && docker compose up --detach
+	@echo ""
+	@echo "  Grafana dashboard: $(GRAFANA_DASHBOARD_URL)"
+	@echo "  Prometheus:        http://localhost:9090"
+	@echo "  (Grafana: admin / admin, or anonymous viewer)"
+	@echo ""
+	@(sleep 3; xdg-open "$(GRAFANA_DASHBOARD_URL)" >/dev/null 2>&1 || open "$(GRAFANA_DASHBOARD_URL)" >/dev/null 2>&1 || true) &
+	cd $(METRICS_DIR) && docker compose logs -f --tail=20
+
+metrics-down:
+	cd $(METRICS_DIR) && docker compose down
+
+# Also remove the Prometheus/Grafana data volumes, resetting all dashboards,
+# annotations, and stored metric history.
+metrics-clean:
+	cd $(METRICS_DIR) && docker compose down --volumes
+
 test:
 	@for u in $(TEST_URLS); do \
 	  code=$$(curl -sS -o /dev/null -w '%{http_code}' "$$u"); \
